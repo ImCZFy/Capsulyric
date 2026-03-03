@@ -131,7 +131,7 @@
     <string name="main_open_settings">打开通知推广设置</string>
     <string name="main_whitelist_title">已添加应用</string>
     <string name="main_add_package">添加应用包名</string>
-    <string name="settings_dynamic_icon">动态元数据图标 (实验性)</string>
+    <string name="settings_dynamic_icon">将左侧图标设为播放信息（测试）</string>
 
     <string name="settings_prerelease_update">接收预发布版本</string>
     <string name="settings_prerelease_update_desc">检查测试版本更新（不是CI自动编译版本）</string>

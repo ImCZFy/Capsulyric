@@ -153,12 +153,12 @@
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
     <string name="settings_super_island_colorize">Colorize Playback Info</string>
-    <string name="settings_super_island_colorize_desc">Match notification color with album art</string>
+    <string name="settings_super_island_colorize_desc">Use album cover color for lyrics, song title, capsule edge, and progress bar in Super Island.</string>
 
     <string name="settings_shizuku_mode">Shizuku Mode</string>
     <string name="settings_shizuku_mode_desc">Use Shizuku to toggle network for seamless island notifications (Experimental)</string>
 
-    <string name="settings_super_island_share">Share Button</string>
+    <string name="settings_super_island_share">Enable Drag-and-Drop Sharing</string>
     <string name="settings_super_island_share_desc">Allow dragging Super Island to share lyrics.</string>
     <string name="settings_super_island_share_format">Share Text Format</string>
     <string name="share_format_1">Lyric \\n Song by Artist</string>
@@ -191,7 +191,7 @@
    - Compatibility Warning: Other versions are not fully tested and may be unstable.\n
    - HyperOS Note: Versions below 3.0.300 cannot display native live notifications.\n\n
 3. <b>Check Music App Settings</b>:\n
-   - QQ Music/Netease/Xiaomi Music etc.: Some versions may require connecting headphones to trigger "Car Bluetooth Lyrics" or "Notification Lyrics".\n
+   - QQ Music/Netease/Xiaomi Music etc.: Some versions may require connecting headphones to trigger \"Car Bluetooth Lyrics\" or \"Notification Lyrics\".\n
    - Apple Music etc.: Apps relying on SuperLyric API must have the SuperLyric module installed (requires LSPosed).\n\n
 4. <b>Online Lyric Limits</b>: If using online lyrics, API limitations may temporarily prevent fetching accurate lyrics.</string>
 
