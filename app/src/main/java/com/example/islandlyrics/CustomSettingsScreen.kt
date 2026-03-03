@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
+import android.content.pm.PackageManager
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -47,18 +49,6 @@ fun CustomSettingsScreen(
         stringResource(R.string.tab_app_ui)
     )
 
-    // ... (State setup lines 44-152 omitted for brevity as they don't change, assuming contextual match) ...
-    // Note: I cannot omit lines in replace_file_content unless I use multiple chunks or careful selection.
-    // The user wants me to reorder the content. The State setup is needed for the content.
-    // I will target the TopAppBar and HorizontalPager parts specifically.
-
-    /*
-       Wait, I can't easily skip the middle part if I want to update 'tabs' definition (line 42) AND 'HorizontalPager' (line 178).
-       I should do this in multiple chunks using multi_replace_file_content if possible, or just replace the big affected blocks.
-       
-       Let's use multi_replace_file_content.
-    */
-    
     // Changing strategy to multi_replace_file_content in the thought block, but here I am in the tool call.
     // I will cancel this tool call logic and use multi_replace_file_content instead.
     
@@ -107,10 +97,16 @@ fun CustomSettingsScreen(
     var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var shizukuModeEnabled by remember { mutableStateOf(prefs.getBoolean("shizuku_mode_enabled", false)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
+
+    // Shizuku settings
+    var shizukuTransientDuration by remember { mutableLongStateOf(prefs.getLong("shizuku_transient_duration", 300L)) }
+    var showTransientDurationDropdown by remember { mutableStateOf(false) }
+
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
 
@@ -249,7 +245,8 @@ fun CustomSettingsScreen(
                                     checked = oneuiCapsuleColorEnabled,
                                     onCheckedChange = {
                                         oneuiCapsuleColorEnabled = it
-                                        prefs.edit().putBoolean("oneui_capsule_color_enabled", it).apply()
+                                        prefs.edit().putBoolean("oneui_capsule_color_enabled", it)
+                                            .apply()
                                     }
                                 )
                             }
@@ -261,12 +258,15 @@ fun CustomSettingsScreen(
                                     checked = superIslandEnabled,
                                     onCheckedChange = { enabled ->
                                         superIslandEnabled = enabled
-                                        prefs.edit().putBoolean("super_island_enabled", enabled).apply()
+                                        prefs.edit().putBoolean("super_island_enabled", enabled)
+                                            .apply()
 
                                         //  Logic: If MiPlay is selected when enabling Super Island, switch to Off
                                         if (enabled && actionStyle == "miplay") {
                                             actionStyle = "disabled"
-                                            prefs.edit().putString("notification_actions_style", "disabled").apply()
+                                            prefs.edit()
+                                                .putString("notification_actions_style", "disabled")
+                                                .apply()
                                         }
 
                                         val action = if (enabled) {
@@ -274,112 +274,232 @@ fun CustomSettingsScreen(
                                         } else {
                                             "ACTION_DISABLE_SUPER_ISLAND"
                                         }
-                                        val intent = Intent(context, LyricService::class.java).setAction(action)
+                                        val intent =
+                                            Intent(context, LyricService::class.java).setAction(
+                                                action
+                                            )
                                         context.startService(intent)
                                     }
                                 )
 
-                                if (isHyperOsSupported && !superIslandEnabled) {
-                                    SettingsSwitchItem(
-                                        title = stringResource(R.string.settings_dynamic_icon),
-                                        subtitle = stringResource(R.string.settings_dynamic_icon_desc),
-                                        checked = dynamicIconEnabled,
-                                        onCheckedChange = {
-                                            dynamicIconEnabled = it
-                                            prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
-                                        }
-                                    )
-
-                                    if (dynamicIconEnabled) {
-                                        val styleDisplayName = when (iconStyle) {
-                                            "advanced" -> stringResource(R.string.icon_style_advanced)
-                                            else -> stringResource(R.string.icon_style_classic)
-                                        }
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                                            SettingsTextItem(
-                                                title = stringResource(R.string.settings_icon_style),
-                                                value = styleDisplayName,
-                                                onClick = { showIconStyleDropdown = true }
-                                            )
-                                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                                DropdownMenu(
-                                                    expanded = showIconStyleDropdown,
-                                                    onDismissRequest = { showIconStyleDropdown = false }
-                                                ) {
-                                                    val styles = listOf(
-                                                        "classic" to R.string.icon_style_classic,
-                                                        "advanced" to R.string.icon_style_advanced
-                                                    )
-                                                    styles.forEach { (styleId, nameId) ->
-                                                        DropdownMenuItem(
-                                                            text = { Text(stringResource(nameId)) },
-                                                            onClick = {
-                                                                iconStyle = styleId
-                                                                prefs.edit().putString("dynamic_icon_style", styleId).apply()
-                                                                showIconStyleDropdown = false
-                                                            }
-                                                        )
+                                // Shizuku Mode: Only available for HyperOS users to bypass Xiaomi Service Framework whitelist
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_shizuku_mode),
+                                    subtitle = stringResource(R.string.settings_shizuku_mode_desc),
+                                    checked = shizukuModeEnabled,
+                                    enabled = superIslandEnabled,
+                                    onCheckedChange = { checked ->
+                                        if (checked) {
+                                            try {
+                                                if (Shizuku.pingBinder()) {
+                                                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                                                        shizukuModeEnabled = true
+                                                        prefs.edit().putBoolean(
+                                                            "shizuku_mode_enabled",
+                                                            true
+                                                        ).apply()
+                                                    } else {
+                                                        Shizuku.requestPermission(1001)
                                                     }
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Shizuku not connected",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            } catch (e: Exception) {
+                                                // Shizuku not available
+                                                Toast.makeText(
+                                                    context,
+                                                    "Error: ${e.message}",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        } else {
+                                            shizukuModeEnabled = false
+                                            prefs.edit().putBoolean("shizuku_mode_enabled", false)
+                                                .apply()
+                                        }
+                                    }
+                                )
+
+                                if (shizukuModeEnabled && superIslandEnabled) {
+
+                                    /* 当超级岛模式和 Shizuku 均开启时，展示详细设置选项
+                                    *
+                                    * 瞬间阻断: 更新歌词时瞬间阻断，对小米服务框架的影响较小。效果依歌词时长而定。
+                                    *
+                                    * */
+
+                                    val transientTimeText = when (shizukuTransientDuration) {
+                                        100L -> stringResource(R.string.transient_duration_100ms)
+                                        300L -> stringResource(R.string.transient_duration_300ms)
+                                        500L -> stringResource(R.string.transient_duration_500ms)
+                                        800L -> stringResource(R.string.transient_duration_800ms)
+                                        1000L -> stringResource(R.string.transient_duration_1000ms)
+                                        else -> stringResource(R.string.transient_duration_300ms)
+                                    }
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_shizuku_transient_duration),
+                                            value = transientTimeText,
+                                            onClick = { showTransientDurationDropdown = true }
+                                        )
+                                        Box(
+                                            modifier = Modifier.matchParentSize()
+                                                .wrapContentSize(Alignment.Center)
+                                        ) {
+                                            DropdownMenu(
+                                                expanded = showTransientDurationDropdown,
+                                                onDismissRequest = {
+                                                    showTransientDurationDropdown = false
+                                                }
+                                            ) {
+                                                val options = listOf(
+                                                    100L to R.string.transient_duration_100ms,
+                                                    300L to R.string.transient_duration_300ms,
+                                                    500L to R.string.transient_duration_500ms,
+                                                    800L to R.string.transient_duration_800ms,
+                                                    1000L to R.string.transient_duration_1000ms
+                                                )
+                                                options.forEach { (duration, labelRes) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(labelRes)) },
+                                                        onClick = {
+                                                            shizukuTransientDuration = duration
+                                                            prefs.edit().putLong(
+                                                                "shizuku_transient_duration",
+                                                                duration
+                                                            ).apply()
+                                                            showTransientDurationDropdown = false
+                                                        }
+                                                    )
                                                 }
                                             }
                                         }
                                     }
                                 }
+                            }
 
-                                if (superIslandEnabled) {
-                                    SettingsSwitchItem(
-                                        title = stringResource(R.string.settings_super_island_colorize),
-                                        subtitle = stringResource(R.string.settings_super_island_colorize_desc),
-                                        checked = superIslandTextColorEnabled,
-                                        onCheckedChange = {
-                                            superIslandTextColorEnabled = it
-                                            progressColorEnabled = it
-                                            prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
-                                            prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
-                                        }
-                                    )
+                            if (isHyperOsSupported && !superIslandEnabled) {
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_dynamic_icon),
+                                    subtitle = stringResource(R.string.settings_dynamic_icon_desc),
+                                    checked = dynamicIconEnabled,
+                                    onCheckedChange = {
+                                        dynamicIconEnabled = it
+                                        prefs.edit().putBoolean("dynamic_icon_enabled", it).apply()
+                                    }
+                                )
 
-                                    SettingsSwitchItem(
-                                        title = stringResource(R.string.settings_super_island_share),
-                                        subtitle = stringResource(R.string.settings_super_island_share_desc),
-                                        checked = superIslandShareEnabled,
-                                        onCheckedChange = {
-                                            superIslandShareEnabled = it
-                                            prefs.edit().putBoolean("super_island_share_enabled", it).apply()
-                                        }
-                                    )
-                                    if (superIslandShareEnabled) {
-                                        val formatDisplayName = when (superIslandShareFormat) {
-                                            "format_2" -> stringResource(R.string.share_format_2)
-                                            "format_3" -> stringResource(R.string.share_format_3)
-                                            else -> stringResource(R.string.share_format_1)
-                                        }
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                                            SettingsTextItem(
-                                                title = stringResource(R.string.settings_super_island_share_format),
-                                                value = formatDisplayName,
-                                                onClick = { showShareFormatDropdown = true }
-                                            )
-                                            Box(modifier = Modifier.matchParentSize().wrapContentSize(Alignment.Center)) {
-                                                DropdownMenu(
-                                                    expanded = showShareFormatDropdown,
-                                                    onDismissRequest = { showShareFormatDropdown = false }
-                                                ) {
-                                                    val formats = listOf(
-                                                        "format_1" to R.string.share_format_1,
-                                                        "format_2" to R.string.share_format_2,
-                                                        "format_3" to R.string.share_format_3
+                                if (dynamicIconEnabled) {
+                                    val styleDisplayName = when (iconStyle) {
+                                        "advanced" -> stringResource(R.string.icon_style_advanced)
+                                        else -> stringResource(R.string.icon_style_classic)
+                                    }
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_icon_style),
+                                            value = styleDisplayName,
+                                            onClick = { showIconStyleDropdown = true }
+                                        )
+                                        Box(
+                                            modifier = Modifier.matchParentSize()
+                                                .wrapContentSize(Alignment.Center)
+                                        ) {
+                                            DropdownMenu(
+                                                expanded = showIconStyleDropdown,
+                                                onDismissRequest = { showIconStyleDropdown = false }
+                                            ) {
+                                                val styles = listOf(
+                                                    "classic" to R.string.icon_style_classic,
+                                                    "advanced" to R.string.icon_style_advanced
+                                                )
+                                                styles.forEach { (styleId, nameId) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(nameId)) },
+                                                        onClick = {
+                                                            iconStyle = styleId
+                                                            prefs.edit().putString(
+                                                                "dynamic_icon_style",
+                                                                styleId
+                                                            ).apply()
+                                                            showIconStyleDropdown = false
+                                                        }
                                                     )
-                                                    formats.forEach { (formatId, nameId) ->
-                                                        DropdownMenuItem(
-                                                            text = { Text(stringResource(nameId)) },
-                                                            onClick = {
-                                                                superIslandShareFormat = formatId
-                                                                prefs.edit().putString("super_island_share_format", formatId).apply()
-                                                                showShareFormatDropdown = false
-                                                            }
-                                                        )
-                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (superIslandEnabled) {
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_super_island_colorize),
+                                    subtitle = stringResource(R.string.settings_super_island_colorize_desc),
+                                    checked = superIslandTextColorEnabled,
+                                    onCheckedChange = {
+                                        superIslandTextColorEnabled = it
+                                        progressColorEnabled = it
+                                        prefs.edit()
+                                            .putBoolean("super_island_text_color_enabled", it)
+                                            .apply()
+                                        prefs.edit().putBoolean("progress_bar_color_enabled", it)
+                                            .apply()
+                                    }
+                                )
+
+                                SettingsSwitchItem(
+                                    title = stringResource(R.string.settings_super_island_share),
+                                    subtitle = stringResource(R.string.settings_super_island_share_desc),
+                                    checked = superIslandShareEnabled,
+                                    onCheckedChange = {
+                                        superIslandShareEnabled = it
+                                        prefs.edit().putBoolean("super_island_share_enabled", it)
+                                            .apply()
+                                    }
+                                )
+                                if (superIslandShareEnabled) {
+                                    val formatDisplayName = when (superIslandShareFormat) {
+                                        "format_2" -> stringResource(R.string.share_format_2)
+                                        "format_3" -> stringResource(R.string.share_format_3)
+                                        else -> stringResource(R.string.share_format_1)
+                                    }
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        SettingsTextItem(
+                                            title = stringResource(R.string.settings_super_island_share_format),
+                                            value = formatDisplayName,
+                                            onClick = { showShareFormatDropdown = true }
+                                        )
+                                        Box(
+                                            modifier = Modifier.matchParentSize()
+                                                .wrapContentSize(Alignment.Center)
+                                        ) {
+                                            DropdownMenu(
+                                                expanded = showShareFormatDropdown,
+                                                onDismissRequest = {
+                                                    showShareFormatDropdown = false
+                                                }
+                                            ) {
+                                                val formats = listOf(
+                                                    "format_1" to R.string.share_format_1,
+                                                    "format_2" to R.string.share_format_2,
+                                                    "format_3" to R.string.share_format_3
+                                                )
+                                                formats.forEach { (formatId, nameId) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(nameId)) },
+                                                        onClick = {
+                                                            superIslandShareFormat = formatId
+                                                            prefs.edit().putString(
+                                                                "super_island_share_format",
+                                                                formatId
+                                                            ).apply()
+                                                            showShareFormatDropdown = false
+                                                        }
+                                                    )
                                                 }
                                             }
                                         }
@@ -387,7 +507,8 @@ fun CustomSettingsScreen(
                                 }
                             }
                         }
-                        1 -> { // Notification (Moved from 2)
+
+                1 -> { // Notification (Moved from 2)
                              // Preview
                              NotificationPreview(
                                  progressColorEnabled = progressColorEnabled,

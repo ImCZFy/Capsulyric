@@ -17,6 +17,9 @@ import org.json.JSONObject
 
 import android.content.SharedPreferences
 import com.example.islandlyrics.OnlineLyricFetcher
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * SuperIslandHandler
@@ -40,6 +43,11 @@ class SuperIslandHandler(
     private val manager: NotificationManager? =
         context.getSystemService(NotificationManager::class.java)
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val notificationMutex = Mutex()
+
+    // Transient Mode Configuration
+    private var cachedTransientDuration = 300L
 
     var isRunning = false
         private set
@@ -89,6 +97,9 @@ class SuperIslandHandler(
             "notification_actions_style" -> {
                 cachedActionStyle = p.getString(key, "disabled") ?: "disabled"
                 forceUpdateNotification()
+            }
+            "shizuku_transient_duration" -> {
+                cachedTransientDuration = p.getLong(key, 300L)
             }
         }
     }
@@ -284,6 +295,7 @@ class SuperIslandHandler(
         cachedProgressBarColorEnabled = prefs.getBoolean("progress_bar_color_enabled", false)
         cachedActionStyle = prefs.getString("notification_actions_style", "disabled") ?: "disabled"
         cachedDisableScrolling = prefs.getBoolean("disable_lyric_scrolling", false)
+        cachedTransientDuration = prefs.getLong("shizuku_transient_duration", 300L)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
         lastLyric = ""
@@ -322,6 +334,8 @@ class SuperIslandHandler(
         manager?.cancel(NOTIFICATION_ID)
         cachedNotification = null
         cachedBuilder = null
+
+
         AppLogger.getInstance().log(TAG, "🏝️ SuperIslandHandler stopped")
     }
 
@@ -405,7 +419,7 @@ class SuperIslandHandler(
         val notification = builder.build()
         cachedNotification = notification
 
-        service.startForeground(NOTIFICATION_ID, notification)
+        notifyWithXiaomi(notification, isForeground = true)
     }
 
     private fun applyPicsAndActions(metadata: LyricRepository.MediaInfo?, albumArt: Bitmap?, notification: Notification?) {
@@ -585,8 +599,62 @@ class SuperIslandHandler(
         // Update ContentIntent if it changed (or just refresh it)
         notification.contentIntent = createContentIntent()
 
-        manager?.notify(NOTIFICATION_ID, notification)
+        notifyWithXiaomi(notification)
         isFirstNotification = false
+    }
+
+    private fun notifyWithXiaomi(notification: Notification, isForeground: Boolean = false) {
+        val shizukuMode = prefs.getBoolean("shizuku_mode_enabled", false)
+
+        if (!shizukuMode) {
+            if (isForeground) {
+                service.startForeground(NOTIFICATION_ID, notification)
+            } else {
+                manager?.notify(NOTIFICATION_ID, notification)
+            }
+            return
+        }
+
+        scope.launch(Dispatchers.IO) {
+            notificationMutex.withLock {
+                val targetPkg = "com.xiaomi.xmsf"
+
+                try {
+                    // TRANSIENT MODE: Block -> Notify -> Sleep -> Restore
+                    try {
+                        // 1. Block
+                        NetworkPolicyManager.toggleAppInternet(context, targetPkg, false)
+                        // Note: We skip forceStopPackage here to avoid system thrashing on every update.
+
+                        // 2. Notify
+                        if (isForeground) {
+                            service.startForeground(NOTIFICATION_ID, notification)
+                        } else {
+                            manager?.notify(NOTIFICATION_ID, notification)
+                        }
+
+                        // 3. Maintain blind window
+                        delay(cachedTransientDuration)
+                    } finally {
+                        // 4. Restore immediately
+                        // We use a separate try-catch here to ensure standard exception handling
+                        // for the whole block doesn't mask restore failure or vice-versa
+                        try {
+                            NetworkPolicyManager.toggleAppInternet(context, targetPkg, true)
+                        } catch (e: Exception) {
+                            AppLogger.getInstance().e(TAG, "Failed to restore network in transient mode: ${e.message}")
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    AppLogger.getInstance().e(TAG, "Shizuku notify failed: ${e.message}")
+                    // Fallback notify
+                    try {
+                        manager?.notify(NOTIFICATION_ID, notification)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
     }
 
     // ── Scrolling Helper Math ──

@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
+import android.content.pm.PackageManager
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
 import top.yukonga.miuix.kmp.extra.SuperDropdown
@@ -73,12 +75,18 @@ fun MiuixCustomSettingsScreen(
     var oneuiCapsuleColorEnabled by remember { mutableStateOf(prefs.getBoolean("oneui_capsule_color_enabled", false)) }
 
     var superIslandEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_enabled", false)) }
+    var shizukuModeEnabled by remember { mutableStateOf(prefs.getBoolean("shizuku_mode_enabled", false)) }
     var superIslandTextColorEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_text_color_enabled", false)) }
 
     var superIslandShareEnabled by remember { mutableStateOf(prefs.getBoolean("super_island_share_enabled", true)) }
     var superIslandShareFormat by remember { mutableStateOf(prefs.getString("super_island_share_format", "format_1") ?: "format_1") }
+    var shizukuTransientDuration by remember { mutableLongStateOf(prefs.getLong("shizuku_transient_duration", 300L)) }
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
+
+    // Dialog state for custom duration
+    var showCustomDurationDialog by remember { mutableStateOf(false) }
+    var customDurationInput by remember { mutableStateOf("") }
 
     val isHyperOsSupported = remember { RomUtils.isHyperOsVersionAtLeast(3, 0, 300) }
     val isHyperOs = remember { RomUtils.getRomType() == "HyperOS" }
@@ -221,49 +229,71 @@ fun MiuixCustomSettingsScreen(
                                                 context.startService(intent)
                                             }
                                         )
-                                        if (superIslandEnabled) {
-                                            SuperSwitch(
-                                                title = stringResource(R.string.settings_super_island_colorize),
-                                                summary = stringResource(R.string.settings_super_island_colorize_desc),
-                                                checked = superIslandTextColorEnabled,
-                                                onCheckedChange = {
-                                                    superIslandTextColorEnabled = it
-                                                    progressColorEnabled = it
-                                                    prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
-                                                    prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
-                                                }
-                                            )
-
-                                            SuperSwitch(
-                                                title = stringResource(R.string.settings_super_island_share),
-                                                summary = stringResource(R.string.settings_super_island_share_desc),
-                                                checked = superIslandShareEnabled,
-                                                onCheckedChange = {
-                                                    superIslandShareEnabled = it
-                                                    prefs.edit().putBoolean("super_island_share_enabled", it).apply()
-                                                }
-                                            )
-
-                                            if (superIslandShareEnabled) {
-                                                val shareFormats = listOf("format_1", "format_2", "format_3")
-                                                val shareFormatNames = listOf(
-                                                    stringResource(R.string.share_format_1),
-                                                    stringResource(R.string.share_format_2),
-                                                    stringResource(R.string.share_format_3)
-                                                )
-                                                val currentFormatIndex = shareFormats.indexOf(superIslandShareFormat).takeIf { it >= 0 } ?: 0
-
-                                                SuperDropdown(
-                                                    title = stringResource(R.string.settings_super_island_share_format),
-                                                    items = shareFormatNames,
-                                                    selectedIndex = currentFormatIndex,
-                                                    onSelectedIndexChange = { index ->
-                                                        val newFormat = shareFormats[index]
-                                                        superIslandShareFormat = newFormat
-                                                        prefs.edit().putString("super_island_share_format", newFormat).apply()
+                                        SuperSwitch(
+                                            title = stringResource(R.string.settings_shizuku_mode),
+                                            summary = stringResource(R.string.settings_shizuku_mode_desc),
+                                            checked = shizukuModeEnabled,
+                                            enabled = superIslandEnabled,
+                                            onCheckedChange = { checked ->
+                                                if (checked) {
+                                                    try {
+                                                        if (Shizuku.pingBinder()) {
+                                                            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                                                                shizukuModeEnabled = true
+                                                                prefs.edit().putBoolean("shizuku_mode_enabled", true).apply()
+                                                            } else {
+                                                                Shizuku.requestPermission(1001)
+                                                            }
+                                                        } else {
+                                                            Toast.makeText(context, "Shizuku not connected", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        // Shizuku not available
+                                                        Toast.makeText(context, "Shizuku error: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
-                                                )
+                                                } else {
+                                                    shizukuModeEnabled = false
+                                                    prefs.edit().putBoolean("shizuku_mode_enabled", false).apply()
+                                                }
                                             }
+                                        )
+                                        if (shizukuModeEnabled && superIslandEnabled) {
+                                            // Transient Mode Configuration
+                                            val transientDurations = mutableListOf(100L, 300L, 500L, 800L, 1000L)
+                                            val transientNames = mutableListOf(
+                                                stringResource(R.string.transient_duration_100ms),
+                                                stringResource(R.string.transient_duration_300ms),
+                                                stringResource(R.string.transient_duration_500ms),
+                                                stringResource(R.string.transient_duration_800ms),
+                                                stringResource(R.string.transient_duration_1000ms)
+                                            )
+
+                                            val isCustom = shizukuTransientDuration !in transientDurations
+                                            if (isCustom) {
+                                                transientDurations.add(shizukuTransientDuration)
+                                                transientNames.add("${shizukuTransientDuration}ms")
+                                            }
+                                            transientDurations.add(-1L) // Sentinel for "Custom..."
+                                            transientNames.add(stringResource(R.string.settings_custom))
+
+                                            val currentTransientIndex = transientDurations.indexOf(shizukuTransientDuration).takeIf { it >= 0 } ?: (transientDurations.size - 1)
+
+                                            SuperDropdown(
+                                                title = stringResource(R.string.settings_shizuku_transient_duration),
+                                                items = transientNames,
+                                                selectedIndex = currentTransientIndex,
+                                                onSelectedIndexChange = { index ->
+                                                    val duration = transientDurations[index]
+                                                    if (duration == -1L) {
+                                                        // Custom
+                                                        customDurationInput = shizukuTransientDuration.toString()
+                                                        showCustomDurationDialog = true
+                                                    } else {
+                                                        shizukuTransientDuration = duration
+                                                        prefs.edit().putLong("shizuku_transient_duration", duration).apply()
+                                                    }
+                                                }
+                                            )
                                         }
                                     }
                                     if (isHyperOsSupported && !superIslandEnabled) {
@@ -445,4 +475,45 @@ fun MiuixCustomSettingsScreen(
         }
     }
 
+    // Custom Duration Dialog
+    if (showCustomDurationDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showCustomDurationDialog = false },
+            title = { androidx.compose.material3.Text(stringResource(R.string.dialog_custom_duration_title)) },
+            text = {
+                Column {
+                    androidx.compose.material3.Text(stringResource(R.string.dialog_custom_duration_hint))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.material3.TextField(
+                        value = customDurationInput,
+                        onValueChange = { customDurationInput = it },
+                        placeholder = { androidx.compose.material3.Text("25000") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default.copy(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                val errorText = stringResource(R.string.error_invalid_number)
+                androidx.compose.material3.TextButton(onClick = {
+                    val duration = customDurationInput.toLongOrNull()
+                    if (duration != null) {
+                        shizukuTransientDuration = duration
+                        prefs.edit().putLong("shizuku_transient_duration", duration).apply()
+                        showCustomDurationDialog = false
+                    } else {
+                        Toast.makeText(context, errorText, Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    androidx.compose.material3.Text(stringResource(android.R.string.ok))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showCustomDurationDialog = false }) {
+                    androidx.compose.material3.Text(stringResource(R.string.dialog_btn_cancel))
+                }
+            }
+        )
+    }
 }

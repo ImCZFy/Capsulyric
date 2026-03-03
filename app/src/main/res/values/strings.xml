@@ -153,8 +153,12 @@
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_disable_scrolling_desc">Displays static text only. Prevents ALL scrolling, regardless of lyric type.</string>
     <string name="settings_super_island_colorize">Colorize Playback Info</string>
-    <string name="settings_super_island_colorize_desc">Use album cover color for lyrics, song title, capsule edge, and progress bar in Super Island.</string>
-    <string name="settings_super_island_share">Enable Drag-and-Drop Sharing</string>
+    <string name="settings_super_island_colorize_desc">Match notification color with album art</string>
+
+    <string name="settings_shizuku_mode">Shizuku Mode</string>
+    <string name="settings_shizuku_mode_desc">Use Shizuku to toggle network for seamless island notifications (Experimental)</string>
+
+    <string name="settings_super_island_share">Share Button</string>
     <string name="settings_super_island_share_desc">Allow dragging Super Island to share lyrics.</string>
     <string name="settings_super_island_share_format">Share Text Format</string>
     <string name="share_format_1">Lyric \\n Song by Artist</string>
@@ -187,7 +191,7 @@
    - Compatibility Warning: Other versions are not fully tested and may be unstable.\n
    - HyperOS Note: Versions below 3.0.300 cannot display native live notifications.\n\n
 3. <b>Check Music App Settings</b>:\n
-   - QQ Music/Netease/Xiaomi Music etc.: Some versions may require connecting headphones to trigger \"Car Bluetooth Lyrics\" or \"Notification Lyrics\".\n
+   - QQ Music/Netease/Xiaomi Music etc.: Some versions may require connecting headphones to trigger "Car Bluetooth Lyrics" or "Notification Lyrics".\n
    - Apple Music etc.: Apps relying on SuperLyric API must have the SuperLyric module installed (requires LSPosed).\n\n
 4. <b>Online Lyric Limits</b>: If using online lyrics, API limitations may temporarily prevent fetching accurate lyrics.</string>
 
@@ -310,4 +314,25 @@
     <string name="settings_click_action_media_desc">Shows a popup without opening the app</string>
     <string name="oobe_btn_start">Start</string>
 
+    <!-- Shizuku Network Block Duration -->
+    <string name="settings_shizuku_block_duration">Network Block Duration</string>
+    <string name="settings_shizuku_block_duration_desc">Max duration to keep system framework blocked before forced restore. Higher values improve Island stability but may delay system sync.</string>
+    <string name="block_duration_15s">Short (15s)</string>
+    <string name="block_duration_25s">Default (25s)</string>
+    <string name="block_duration_45s">Long (45s)</string>
+    <string name="block_duration_90s">Very Long (90s)</string>
+
+    <string name="settings_shizuku_block_mode">Blocking Strategy</string>
+    <string name="block_mode_continuous">Continuous (Stable)</string>
+    <string name="block_mode_transient">Transient (Intermittent)</string>
+    <string name="settings_shizuku_transient_duration">Transient Block Duration</string>
+    <string name="transient_duration_300ms">300ms (Fast)</string>
+    <string name="transient_duration_500ms">500ms (Balanced)</string>
+    <string name="transient_duration_800ms">800ms (Safe)</string>
+    <string name="transient_duration_100ms">100ms (Risky)</string>
+    <string name="transient_duration_1000ms">1000ms (Stable)</string>
+    <string name="settings_custom">Custom</string>
+    <string name="dialog_custom_duration_title">Custom Duration (ms)</string>
+    <string name="dialog_custom_duration_hint">Enter duration in milliseconds</string>
+    <string name="error_invalid_number">Invalid number</string>
 </resources>

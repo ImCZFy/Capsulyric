@@ -1,4 +1,4 @@
-# Capsulyric
+# Capsulyric Unofficial
 
 [![Latest Release](https://img.shields.io/github/v/release/FrancoGiudans/Capsulyric?include_prereleases&style=flat-square&label=Latest&color=orange)](https://github.com/FrancoGiudans/Capsulyric/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/FrancoGiudans/Capsulyric/total?style=flat-square&color=green)](https://github.com/FrancoGiudans/Capsulyric/releases)
@@ -25,8 +25,8 @@
 
 ### 2. 小米超级岛 (Xiaomi Super Island)
 * **Requirements**: HyperOS 3.0+
-* **System**: Root access is required.
-> 要求 HyperOS 3.0+，且系统需要 Root 权限。
+* **System**: Shizuku or Root is required.
+> 要求 HyperOS 3.0+，且系统需要安装 Shizuku 或者拥有 Root 权限。
 
 ---
 

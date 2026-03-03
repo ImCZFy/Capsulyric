@@ -131,7 +131,8 @@
     <string name="main_open_settings">打开通知推广设置</string>
     <string name="main_whitelist_title">已添加应用</string>
     <string name="main_add_package">添加应用包名</string>
-    <string name="settings_dynamic_icon">将左侧图标设为播放信息（测试）</string>
+    <string name="settings_dynamic_icon">动态元数据图标 (实验性)</string>
+
     <string name="settings_prerelease_update">接收预发布版本</string>
     <string name="settings_prerelease_update_desc">检查测试版本更新（不是CI自动编译版本）</string>
     <string name="dialog_prerelease_warning_title">确认接收预发布版本？</string>
@@ -303,4 +304,27 @@
     <string name="ui_style_miuix">Miuix</string>
     <string name="settings_predictive_back">预测性返回</string>
 
+    <string name="settings_shizuku_mode">Shizuku 模式</string>
+    <string name="settings_shizuku_mode_desc">使用 Shizuku 控制网络以实现无缝灵动岛通知 (实验性)</string>
+
+    <string name="settings_shizuku_block_duration">持续阻断时长</string>
+    <string name="settings_shizuku_block_duration_desc">强制恢复网络前的最大连续阻断时间。时间越长灵动岛越稳定，但可能延迟系统同步。</string>
+    <string name="block_duration_15s">短 (15秒)</string>
+    <string name="block_duration_25s">默认 (25秒)</string>
+    <string name="block_duration_45s">长 (45秒)</string>
+    <string name="block_duration_90s">超长 (90秒)</string>
+
+    <string name="settings_shizuku_block_mode">阻断策略</string>
+    <string name="block_mode_continuous">持续阻断 (稳定)</string>
+    <string name="block_mode_transient">瞬时阻断 (间歇)</string>
+    <string name="settings_shizuku_transient_duration">瞬时阻断时长</string>
+    <string name="transient_duration_300ms">300毫秒 (快速)</string>
+    <string name="transient_duration_500ms">500毫秒 (平衡)</string>
+    <string name="transient_duration_800ms">800毫秒 (安全)</string>
+    <string name="transient_duration_100ms">100毫秒 (发烧)</string>
+    <string name="transient_duration_1000ms">1000毫秒 (稳定)</string>
+    <string name="settings_custom">自定义</string>
+    <string name="dialog_custom_duration_title">自定义时长 (毫秒)</string>
+    <string name="dialog_custom_duration_hint">请输入时长</string>
+    <string name="error_invalid_number">输入的不是有效数字</string>
 </resources>
