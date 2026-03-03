@@ -342,7 +342,7 @@ fun CustomSettingsScreen(
                                         500L -> stringResource(R.string.transient_duration_500ms)
                                         800L -> stringResource(R.string.transient_duration_800ms)
                                         1000L -> stringResource(R.string.transient_duration_1000ms)
-                                        else -> stringResource(R.string.transient_duration_300ms)
+                                        else -> "${shizukuTransientDuration}ms"
                                     }
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         SettingsTextItem(
@@ -378,6 +378,14 @@ fun CustomSettingsScreen(
                                                             ).apply()
                                                             showTransientDurationDropdown = false
                                                         }
+                                                    )
+                                                }
+                                                // Show current custom value if it's not in options
+                                                val isCustom = shizukuTransientDuration !in options.map { it.first }
+                                                if (isCustom) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("${shizukuTransientDuration}ms") },
+                                                        onClick = { showTransientDurationDropdown = false }
                                                     )
                                                 }
                                                 // Custom Option
