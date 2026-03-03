@@ -107,6 +107,10 @@ fun CustomSettingsScreen(
     var shizukuTransientDuration by remember { mutableLongStateOf(prefs.getLong("shizuku_transient_duration", 300L)) }
     var showTransientDurationDropdown by remember { mutableStateOf(false) }
 
+    // Dialog state for custom duration
+    var showCustomDurationDialog by remember { mutableStateOf(false) }
+    var customDurationInput by remember { mutableStateOf("") }
+
     var miuixEnabled by remember { mutableStateOf(prefs.getBoolean("ui_use_miuix", false)) }
     var predictiveBackEnabled by remember { mutableStateOf(prefs.getBoolean("predictive_back_enabled", false)) }
 
@@ -376,6 +380,15 @@ fun CustomSettingsScreen(
                                                         }
                                                     )
                                                 }
+                                                // Custom Option
+                                                DropdownMenuItem(
+                                                    text = { Text(stringResource(R.string.settings_custom)) },
+                                                    onClick = {
+                                                        customDurationInput = shizukuTransientDuration.toString()
+                                                        showCustomDurationDialog = true
+                                                        showTransientDurationDropdown = false
+                                                    }
+                                                )
                                             }
                                         }
                                     }
@@ -768,7 +781,48 @@ fun CustomSettingsScreen(
                 )
             }
 
-
+            // Custom Duration Dialog
+            if (showCustomDurationDialog) {
+                AlertDialog(
+                    onDismissRequest = { showCustomDurationDialog = false },
+                    title = { Text(stringResource(R.string.dialog_custom_duration_title)) },
+                    text = {
+                        Column {
+                            Text(stringResource(R.string.dialog_custom_duration_hint))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextField(
+                                value = customDurationInput,
+                                onValueChange = { customDurationInput = it },
+                                placeholder = { Text("300") },
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        val errorText = stringResource(R.string.error_invalid_number)
+                        TextButton(onClick = {
+                            val duration = customDurationInput.toLongOrNull()
+                            if (duration != null) {
+                                shizukuTransientDuration = duration
+                                prefs.edit().putLong("shizuku_transient_duration", duration).apply()
+                                showCustomDurationDialog = false
+                            } else {
+                                Toast.makeText(context, errorText, Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Text(stringResource(android.R.string.ok))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showCustomDurationDialog = false }) {
+                            Text(stringResource(R.string.dialog_btn_cancel))
+                        }
+                    }
+                )
+            }
         }
     }
 }

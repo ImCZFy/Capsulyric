@@ -295,6 +295,58 @@ fun MiuixCustomSettingsScreen(
                                                 }
                                             )
                                         }
+                                        if (superIslandEnabled) {
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_super_island_colorize),
+                                                summary = stringResource(R.string.settings_super_island_colorize_desc),
+                                                checked = superIslandTextColorEnabled,
+                                                onCheckedChange = {
+                                                    superIslandTextColorEnabled = it
+                                                    progressColorEnabled = it
+                                                    prefs.edit().putBoolean("super_island_text_color_enabled", it).apply()
+                                                    prefs.edit().putBoolean("progress_bar_color_enabled", it).apply()
+                                                }
+                                            )
+
+                                            SuperSwitch(
+                                                title = stringResource(R.string.settings_super_island_share),
+                                                summary = stringResource(R.string.settings_super_island_share_desc),
+                                                checked = superIslandShareEnabled,
+                                                onCheckedChange = {
+                                                    superIslandShareEnabled = it
+                                                    prefs.edit().putBoolean("super_island_share_enabled", it).apply()
+                                                }
+                                            )
+                                            if (superIslandShareEnabled) {
+                                                val formatDisplayName = when (superIslandShareFormat) {
+                                                    "format_2" -> stringResource(R.string.share_format_2)
+                                                    "format_3" -> stringResource(R.string.share_format_3)
+                                                    else -> stringResource(R.string.share_format_1)
+                                                }
+                                                SuperDropdown(
+                                                    title = stringResource(R.string.settings_super_island_share_format),
+                                                    items = listOf(
+                                                        stringResource(R.string.share_format_1),
+                                                        stringResource(R.string.share_format_2),
+                                                        stringResource(R.string.share_format_3)
+                                                    ),
+                                                    selectedIndex = when (superIslandShareFormat) {
+                                                        "format_2" -> 1
+                                                        "format_3" -> 2
+                                                        else -> 0
+                                                    },
+                                                    onSelectedIndexChange = { index ->
+                                                        val formatId = when (index) {
+                                                            1 -> "format_2"
+                                                            2 -> "format_3"
+                                                            else -> "format_1"
+                                                        }
+                                                        superIslandShareFormat = formatId
+                                                        prefs.edit().putString("super_island_share_format", formatId).apply()
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
                                     if (isHyperOsSupported && !superIslandEnabled) {
                                         SuperSwitch(
