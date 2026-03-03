@@ -150,9 +150,6 @@ dependencies {
     implementation libs.miuix
     implementation 'org.jetbrains.androidx.navigationevent:navigationevent-compose:1.0.1'
 
-    // Timber
-    implementation 'com.jakewharton.timber:timber:5.0.1'
-
     // Shizuku
     def shizuku_version = '13.1.0'
     implementation "dev.rikka.shizuku:api:$shizuku_version"

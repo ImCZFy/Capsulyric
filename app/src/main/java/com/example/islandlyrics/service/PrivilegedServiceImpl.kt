@@ -1,11 +1,11 @@
 package com.example.islandlyrics.service
 
-import android.annotation.SuppressLint
+
 import android.net.IConnectivityManager
 import android.os.IBinder
 import android.os.RemoteException
 import com.example.islandlyrics.IPrivilegedService
-import timber.log.Timber
+import com.example.islandlyrics.AppLogger
 import kotlin.system.exitProcess
 
 open class PrivilegedServiceImpl : IPrivilegedService.Stub() {
@@ -23,16 +23,16 @@ open class PrivilegedServiceImpl : IPrivilegedService.Stub() {
             val getServiceMethod = serviceManagerClass.getMethod("getService", String::class.java)
             val binder = getServiceMethod.invoke(null, "connectivity") as IBinder
             cm = IConnectivityManager.Stub.asInterface(binder)
-            Timber.tag(TAG).i("ConnectivityManager binder acquired")
+            AppLogger.getInstance().log(TAG, "ConnectivityManager binder acquired")
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to acquire ConnectivityManager binder")
+            AppLogger.getInstance().e(TAG, "Failed to acquire ConnectivityManager binder", e)
         }
         iConnectivityManager = cm
     }
 
     override fun setPackageNetworkingEnabled(uid: Int, enabled: Boolean) {
         if (iConnectivityManager == null) {
-            Timber.tag(TAG).e("IConnectivityManager is null, cannot toggle network")
+            AppLogger.getInstance().e(TAG, "IConnectivityManager is null, cannot toggle network")
             return
         }
 
@@ -51,16 +51,16 @@ open class PrivilegedServiceImpl : IPrivilegedService.Stub() {
                 // Block network: Ensure the chain is enabled, then apply DENY rule to the UID
                 cm.setFirewallChainEnabled(chain, true)
                 cm.setUidFirewallRule(chain, uid, rule)
-                Timber.tag(TAG).i("Network BLOCKED for UID: $uid via OEM_DENY_3")
+                AppLogger.getInstance().log(TAG, "Network BLOCKED for UID: $uid via OEM_DENY_3")
             } else {
                 // Restore network: Reset the UID rule to DEFAULT to remove the restriction
                 cm.setUidFirewallRule(chain, uid, rule)
                 // WARNING: Do NOT disable the entire chain here, otherwise other apps blocked
                 // in this chain will also regain network access unexpectedly.
-                Timber.tag(TAG).i("Network RESTORED for UID: $uid via OEM_DENY_3")
+                AppLogger.getInstance().log(TAG, "Network RESTORED for UID: $uid via OEM_DENY_3")
             }
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to set package networking via AIDL Stub")
+            AppLogger.getInstance().e(TAG, "Failed to set package networking via AIDL Stub", e)
             throw RemoteException("AIDL Stub invocation failed: ${e.message}")
         }
     }
@@ -74,14 +74,14 @@ open class PrivilegedServiceImpl : IPrivilegedService.Stub() {
                 .redirectErrorStream(true)
                 .start()
             process.waitFor()
-            Timber.tag(TAG).i("Force stopped package: $packageName")
+            AppLogger.getInstance().log(TAG, "Force stopped package: $packageName")
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to force stop package: $packageName")
+            AppLogger.getInstance().e(TAG, "Failed to force stop package: $packageName", e)
         }
     }
 
     override fun destroy() {
-        Timber.tag(TAG).i("Destroying PrivilegedServiceImpl")
+        AppLogger.getInstance().log(TAG, "Destroying PrivilegedServiceImpl")
         exitProcess(0)
     }
 }

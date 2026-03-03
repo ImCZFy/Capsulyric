@@ -12,7 +12,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import rikka.shizuku.Shizuku
-import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -40,25 +39,25 @@ object NetworkPolicyManager {
         val uid = try {
             context.packageManager.getPackageUid(packageName, 0)
         } catch (_: PackageManager.NameNotFoundException) {
-            Timber.tag(TAG).e("Package not found: $packageName")
+            AppLogger.getInstance().e(TAG, "Package not found: $packageName")
             return
         }
 
         try {
             val service = getOrBindService()
             service.setPackageNetworkingEnabled(uid, enable)
-            Timber.tag(TAG).d("Toggled internet for $packageName (UID=$uid) to $enable")
+            AppLogger.getInstance().log(TAG, "Toggled internet for $packageName (UID=$uid) to $enable")
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to toggle internet for $packageName")
+            AppLogger.getInstance().e(TAG, "Failed to toggle internet for $packageName", e)
             if (e is DeadObjectException) {
                 // Invalidate cache and retry once
                 privilegedService = null
                 try {
                     val retryService = getOrBindService()
                     retryService.setPackageNetworkingEnabled(uid, enable)
-                    Timber.tag(TAG).d("Retry success: Toggled internet for $packageName to $enable")
+                    AppLogger.getInstance().log(TAG, "Retry success: Toggled internet for $packageName to $enable")
                 } catch (retryEx: Exception) {
-                    Timber.tag(TAG).e(retryEx, "Retry failed")
+                    AppLogger.getInstance().e(TAG, "Retry failed", retryEx)
                 }
             }
         }
@@ -72,16 +71,16 @@ object NetworkPolicyManager {
         try {
             val service = getOrBindService()
             service.forceStopPackage(packageName)
-            Timber.tag(TAG).d("Force stopped $packageName")
+            AppLogger.getInstance().log(TAG, "Force stopped $packageName")
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to force stop $packageName")
+            AppLogger.getInstance().e(TAG, "Failed to force stop $packageName", e)
             if (e is DeadObjectException) {
                 privilegedService = null
                 try {
                     val retryService = getOrBindService()
                     retryService.forceStopPackage(packageName)
                 } catch (retryEx: Exception) {
-                    Timber.tag(TAG).e(retryEx, "Retry force stop failed")
+                    AppLogger.getInstance().e(TAG, "Retry force stop failed", retryEx)
                 }
             }
         }
@@ -105,7 +104,7 @@ object NetworkPolicyManager {
                 suspendCancellableCoroutine<IPrivilegedService> { cont ->
                     val listener = object : ServiceConnection {
                         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                            Timber.tag(TAG).d("onServiceConnected")
+                            AppLogger.getInstance().log(TAG, "onServiceConnected")
                             try {
                                 val s = IPrivilegedService.Stub.asInterface(service)
                                 privilegedService = s
@@ -113,18 +112,18 @@ object NetworkPolicyManager {
                                     cont.resume(s)
                                 }
                             } catch (e: Exception) {
-                                Timber.tag(TAG).e(e, "Failed to cast AIDL interface")
+                                AppLogger.getInstance().e(TAG, "Failed to cast AIDL interface", e)
                                 if (cont.isActive) cont.resumeWithException(e)
                             }
                         }
 
                         override fun onServiceDisconnected(name: ComponentName?) {
-                            Timber.tag(TAG).d("onServiceDisconnected")
+                            AppLogger.getInstance().log(TAG, "onServiceDisconnected")
                             privilegedService = null
                         }
 
                         override fun onBindingDied(name: ComponentName?) {
-                            Timber.tag(TAG).d("onBindingDied")
+                            AppLogger.getInstance().log(TAG, "onBindingDied")
                             privilegedService = null
                             if (cont.isActive) {
                                 cont.resumeWithException(DeadObjectException("Binding died during connection"))
@@ -141,7 +140,7 @@ object NetworkPolicyManager {
                             } catch (_: Exception) {}
                         }
                     } catch (e: Exception) {
-                        Timber.tag(TAG).e(e, "Bind call failed")
+                        AppLogger.getInstance().e(TAG, "Bind call failed", e)
                         if (cont.isActive) {
                             cont.resumeWithException(e)
                         }
